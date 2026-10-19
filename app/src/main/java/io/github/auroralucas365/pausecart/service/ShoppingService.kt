@@ -13,6 +13,7 @@ import android.view.*
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
+import android.util.Log
 import io.github.auroralucas365.pausecart.MainActivity
 import io.github.auroralucas365.pausecart.BuildConfig
 import io.github.auroralucas365.pausecart.core.*
@@ -57,12 +58,13 @@ class ShoppingService : AccessibilityService() {
         }
         pending?.let(handler::removeCallbacks)
         pending = Runnable {
-            if (activePkg != pkg || prefs.paused || prefs.mode(pkg) != Mode.CHECKOUT) return@Runnable
-            val root = rootInActiveWindow ?: return@Runnable
+            if (activePkg != pkg || prefs.paused || prefs.mode(pkg) != Mode.CHECKOUT) { trace("stale scheduled event; active=$activePkg"); return@Runnable }
+            val root = rootInActiveWindow ?: run { trace("active root unavailable"); return@Runnable }
             if (root.packageName?.toString() != pkg) { root.recycle(); return@Runnable }
             val texts = readTexts(root)
             val rulePkg = if (BuildConfig.DEBUG && pkg == packageName) Shops.all.first().packageName else pkg
             val decision = CheckoutDetector.evaluate(rulePkg, texts)
+            trace("decision=${decision.checkout}; nodes=${texts.size}; rootPackage=$pkg")
             if (decision.checkout && overlay == null) show(shop, decision.amountCents, true)
         }.also { handler.postDelayed(it, 350) }
     }
@@ -109,11 +111,16 @@ class ShoppingService : AccessibilityService() {
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.CENTER }
         val scroll = ScrollView(this).apply { addView(panel); isFillViewport = false }
         params.height = (resources.displayMetrics.heightPixels * 0.72f).toInt()
-        try { wm.addView(scroll, params); overlay = scroll; gate.markShown(shop.packageName, now) }
-        catch (_: RuntimeException) { overlay = null }
+        try { wm.addView(scroll, params); overlay = scroll; overlayVisible = true; gate.markShown(shop.packageName, now); trace("overlay added") }
+        catch (e: RuntimeException) { overlay = null; overlayVisible = false; trace("overlay failed: ${e.javaClass.simpleName}") }
     }
-    private fun hide() { overlay?.let { runCatching { wm.removeView(it) } }; overlay = null }
+    private fun hide() { overlay?.let { runCatching { wm.removeView(it) } }; overlay = null; overlayVisible = false }
+    private fun trace(message: String) { if(BuildConfig.DEBUG) { debugDiagnostic = message; Log.d("PauseCartTest", message) } }
     override fun onInterrupt() { pending?.let(handler::removeCallbacks); hide() }
     override fun onDestroy() { handler.removeCallbacksAndMessages(null); if(::prefs.isInitialized) prefs.unlisten(preferenceListener); hide(); connected = false; super.onDestroy() }
-    companion object { @Volatile var connected = false; private set }
+    companion object {
+        @Volatile var connected = false; private set
+        @Volatile var overlayVisible = false; private set
+        @Volatile var debugDiagnostic = "No diagnostic event"; private set
+    }
 }

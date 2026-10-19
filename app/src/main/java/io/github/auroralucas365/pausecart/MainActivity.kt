@@ -114,7 +114,7 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
             bottomBar = { NavigationBar { listOf("首页", "冷静清单", "提醒设置", "说明").forEachIndexed { i, label ->
                 NavigationBarItem(selected = page == i, onClick = { page = i }, icon = { Text(listOf("Ⅱ", "□", "⚙", "i")[i]) }, label = { Text(label) })
             } } }) { padding ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).testTag("main_list"),
                 contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item { Text("缓购", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold); Text("PauseCart · 想清楚，再决定", color = Forest) }
                 when(page) {

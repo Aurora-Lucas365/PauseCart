@@ -31,13 +31,17 @@ class ShoppingServiceTest {
             shell("settings put secure accessibility_enabled 1")
             waitFor { ShoppingService.connected }
             ctx.startActivity(Intent().setClassName(ctx, "${ctx.packageName}.FixtureActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            waitFor { find(automation, "继续本次购物 · 放行 15 分钟") != null }
+            waitFor { ShoppingService.overlayVisible }
             val dir = File(ctx.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
             automation.takeScreenshot()?.let { bitmap -> File(dir, "03-service-fixture.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle() }
-            assertTrue(find(automation, "继续本次购物 · 放行 15 分钟")!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            val button = find(automation, "继续本次购物 · 放行 15 分钟")
+            assertNotNull("Overlay must expose its continue action", button)
+            assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
             waitFor { prefs.passUntil(ctx.packageName) > System.currentTimeMillis() }
             assertTrue(prefs.passUntil(ctx.packageName) <= System.currentTimeMillis() + 15*60_000L)
         } finally {
+            val dir = File(ctx.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
+            automation.takeScreenshot()?.let { bitmap -> File(dir, "04-service-final-state.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle() }
             prefs.reset()
             if(previous.isBlank()) shell("settings delete secure enabled_accessibility_services") else shell("settings put secure enabled_accessibility_services $previous")
         }
@@ -54,6 +58,6 @@ class ShoppingServiceTest {
     private fun waitFor(condition: () -> Boolean) {
         val end = System.currentTimeMillis() + 15_000
         while(System.currentTimeMillis() < end) { if(condition()) return; Thread.sleep(100) }
-        fail("Local test condition timed out; this is not a merchant-app compatibility result.")
+        fail("Local test condition timed out: ${ShoppingService.debugDiagnostic}; this is not a merchant-app compatibility result.")
     }
 }

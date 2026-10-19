@@ -65,9 +65,7 @@ jobs:
           target: default
           profile: pixel_2
           disable-animations: true
-          script: |
-            ./gradlew connectedDebugAndroidTest --stacktrace
-            adb pull /sdcard/Android/data/io.github.auroralucas365.pausecart/files/screenshots test-screenshots
+          script: bash tools/emulator-test.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,3 +74,4 @@ jobs:
             app/build/reports/androidTests
             app/build/outputs/androidTest-results
             test-screenshots
+            test-service-log.txt

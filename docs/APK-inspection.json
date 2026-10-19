@@ -1,0 +1,86 @@
+{
+  "sha256": "867557f5be990e4310b16d27d66a71cf0c2b3611598031673ccce1d0bf9647da",
+  "size_bytes": 6826920,
+  "manifest": {
+    "versionCode": 1,
+    "versionName": "0.1.0-beta.1",
+    "compileSdkVersion": 35,
+    "compileSdkVersionCodename": "15",
+    "package": "io.github.auroralucas365.pausecart",
+    "platformBuildVersionCode": 35,
+    "platformBuildVersionName": 15
+  },
+  "sdk": {
+    "minSdkVersion": 26,
+    "targetSdkVersion": 35
+  },
+  "permissions": [
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.WAKE_LOCK",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.RECEIVE_BOOT_COMPLETED",
+    "android.permission.FOREGROUND_SERVICE",
+    "io.github.auroralucas365.pausecart.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "application": {
+    "theme": 2131361802,
+    "label": 2131296258,
+    "icon": 2131034118,
+    "allowBackup": false,
+    "supportsRtl": true,
+    "extractNativeLibs": false,
+    "fullBackupContent": 2131492864,
+    "usesCleartextTraffic": false,
+    "roundIcon": 2131034118,
+    "appComponentFactory": "androidx.core.app.CoreComponentFactory",
+    "dataExtractionRules": 2131492865
+  },
+  "native_libraries": [
+    {
+      "name": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "elf_load_alignment": [
+        16384,
+        16384,
+        16384
+      ],
+      "zip_data_offset": 6275072,
+      "zip_16kb_aligned": true
+    },
+    {
+      "name": "lib/armeabi-v7a/libandroidx.graphics.path.so",
+      "elf_load_alignment": [
+        16384,
+        16384,
+        16384
+      ],
+      "zip_data_offset": 6291456,
+      "zip_16kb_aligned": true
+    },
+    {
+      "name": "lib/x86/libandroidx.graphics.path.so",
+      "elf_load_alignment": [
+        16384,
+        16384,
+        16384
+      ],
+      "zip_data_offset": 6307840,
+      "zip_16kb_aligned": true
+    },
+    {
+      "name": "lib/x86_64/libandroidx.graphics.path.so",
+      "elf_load_alignment": [
+        16384,
+        16384,
+        16384
+      ],
+      "zip_data_offset": 6324224,
+      "zip_16kb_aligned": true
+    }
+  ],
+  "assertions": [
+    "No INTERNET permission",
+    "Backup disabled",
+    "Not debuggable",
+    "Debug fixture absent"
+  ]
+}

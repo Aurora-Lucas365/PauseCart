@@ -10,6 +10,9 @@ import java.io.File
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import org.junit.Assert.assertEquals
+import io.github.auroralucas365.pausecart.data.CartDatabase
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 
 class AppFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
@@ -24,8 +27,11 @@ class AppFlowTest {
         compose.onNodeWithTag("save_item").performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("测试冷静商品").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("测试冷静商品").assertExists()
-        compose.onNodeWithText("¥199.90").assertExists()
         screenshot("02-cooldown-list.png")
+        val saved = runBlocking { CartDatabase.get(ctx).items().observe().first { it.any { item -> item.title == "测试冷静商品" } }.first { it.title == "测试冷静商品" } }
+        assertEquals(19990L, saved.cents)
+        compose.onNodeWithTag("main_list").performScrollToNode(hasText("¥199.90"))
+        compose.onNodeWithText("¥199.90").assertExists()
         compose.onNodeWithText("决定放弃").performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("手动记录 · 已放弃（自报）").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("手动记录 · 已放弃（自报）").assertExists()
