@@ -1,9 +1,9 @@
 {
-  "sha256": "70f7ed1c39b9cd85fd157a3048c8621c5247ac22471d784bb7d404c9e0b16c18",
-  "size_bytes": 6831125,
+  "sha256": "6f2f2077ace8b42cd1796e7549dbbb56cf83510af274974d03eed0fe0f725eb2",
+  "size_bytes": 6864021,
   "manifest": {
-    "versionCode": 1,
-    "versionName": "0.1.0-beta.1",
+    "versionCode": 2,
+    "versionName": "0.2.0-beta.1",
     "compileSdkVersion": 35,
     "compileSdkVersionCodename": "15",
     "package": "io.github.auroralucas365.pausecart",
@@ -43,7 +43,7 @@
         16384,
         16384
       ],
-      "zip_data_offset": 6275072,
+      "zip_data_offset": 6307840,
       "zip_16kb_aligned": true
     },
     {
@@ -53,7 +53,7 @@
         16384,
         16384
       ],
-      "zip_data_offset": 6291456,
+      "zip_data_offset": 6324224,
       "zip_16kb_aligned": true
     },
     {
@@ -63,7 +63,7 @@
         16384,
         16384
       ],
-      "zip_data_offset": 6307840,
+      "zip_data_offset": 6340608,
       "zip_16kb_aligned": true
     },
     {
@@ -73,7 +73,7 @@
         16384,
         16384
       ],
-      "zip_data_offset": 6324224,
+      "zip_data_offset": 6356992,
       "zip_16kb_aligned": true
     }
   ],
