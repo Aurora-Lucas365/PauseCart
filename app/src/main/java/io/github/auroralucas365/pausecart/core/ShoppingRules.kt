@@ -10,7 +10,15 @@ object Shops {
     fun find(pkg: String) = all.find { it.packageName == pkg }
 }
 
-data class Decision(val checkout: Boolean, val amountCents: Long? = null)
+enum class CheckoutReason(val message: String) {
+    MATCH("已识别到订单标题和提交按钮"),
+    UNSUPPORTED("当前 App 不在适配范围"),
+    NO_TEXT("当前没有可读取的页面文字，可能尚未加载或受到系统保护"),
+    EXCLUDED("当前包含支付、退款或历史订单标记，不触发下单前提醒"),
+    NO_TITLE("未识别到确认订单标题；当前页面可能不支持识别"),
+    NO_ACTION("已识别订单标题，但未识别到提交或支付按钮")
+}
+data class Decision(val checkout: Boolean, val amountCents: Long? = null, val reason: CheckoutReason = CheckoutReason.MATCH)
 object CheckoutDetector {
     private val excluded = listOf("退款详情", "退款成功", "退货详情", "订单详情", "订单已取消", "支付成功", "付款成功", "请输入支付密码", "付款码", "收款码")
     private val pageTitles = listOf("确认订单", "填写订单", "订单确认", "确认购买", "结算")
@@ -18,12 +26,14 @@ object CheckoutDetector {
     // Amounts are accepted only when explicitly attached to an order-total label.
     private val total = Regex("(?:实付款|应付款|应付|合计|实付|待支付)[：:\\s]*(?:[¥￥]\\s*)?([0-9]{1,7}(?:\\.[0-9]{1,2})?)(?:元)?")
     fun evaluate(pkg: String, texts: List<String>): Decision {
-        if (Shops.find(pkg) == null) return Decision(false)
+        if (Shops.find(pkg) == null) return Decision(false, reason = CheckoutReason.UNSUPPORTED)
         val normalized = texts.take(180).map { it.trim().replace(Regex("\\s+"), " ") }
-        if (normalized.any { t -> excluded.any(t::contains) }) return Decision(false)
+        if (normalized.none { it.isNotBlank() }) return Decision(false, reason = CheckoutReason.NO_TEXT)
+        if (normalized.any { t -> excluded.any(t::contains) }) return Decision(false, reason = CheckoutReason.EXCLUDED)
         val title = normalized.any { t -> pageTitles.any { p -> t == p || (t.length <= 24 && t.contains(p)) } }
         val action = normalized.any { t -> actions.any { a -> t.startsWith(a) && t.length <= 50 } }
-        if (!title || !action) return Decision(false)
+        if (!title) return Decision(false, reason = CheckoutReason.NO_TITLE)
+        if (!action) return Decision(false, reason = CheckoutReason.NO_ACTION)
         val amount = normalized.firstNotNullOfOrNull { total.find(it)?.groupValues?.get(1)?.let(Money::parseCents) }
         return Decision(true, amount)
     }

@@ -5,6 +5,12 @@ import org.junit.Test
 
 class ShoppingRulesTest {
     private val taobao = "com.taobao.taobao"
+    @Test fun checkoutFailuresExplainMissingEvidenceWithoutRetainingText() {
+        assertEquals(CheckoutReason.NO_TEXT, CheckoutDetector.evaluate(taobao,emptyList()).reason)
+        assertEquals(CheckoutReason.NO_TITLE, CheckoutDetector.evaluate(taobao,listOf("立即购买")).reason)
+        assertEquals(CheckoutReason.NO_ACTION, CheckoutDetector.evaluate(taobao,listOf("确认订单","选择地址")).reason)
+        assertEquals(CheckoutReason.EXCLUDED, CheckoutDetector.evaluate(taobao,listOf("确认订单","去支付","请输入支付密码")).reason)
+    }
     @Test fun checkoutRequiresPageAndAction() {
         assertTrue(CheckoutDetector.evaluate(taobao, listOf("确认订单", "提交订单", "合计：￥199.90")).checkout)
         assertFalse(CheckoutDetector.evaluate(taobao, listOf("首页", "立即购买", "¥199")).checkout)

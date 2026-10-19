@@ -177,6 +177,7 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
                                 val name=Shops.find(runtime.lastPackage)?.name ?: "本机测试页"
                                 CheckLine("最近检测","$name · ${date(runtime.lastEventAt)}")
                                 Text(runtime.result,fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                runtime.latencyMs?.let { CheckLine("最近显示耗时","收到事件后 ${it} 毫秒（不含系统派发时间）") }
                             } else Text("返回桌面后打开所选购物 App，再回到这里查看检测结果。",fontSize=13.sp)
                             Button(onClick={ if(!cfg.consent) consent=true else if(!enabled) systemSettings() else if(!ShoppingService.preview()) notify("服务尚未连接，请关闭再开启系统无障碍服务") },modifier=Modifier.testTag("check_window")) { Text(if(!enabled) "开启系统授权" else "检查提醒窗口") }
                             Text("窗口检查成功，只说明可以显示提醒；真实 App 的进入检测需单独确认。",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)

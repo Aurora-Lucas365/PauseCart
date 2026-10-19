@@ -11,11 +11,27 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.auroralucas365.pausecart.core.Mode
 import io.github.auroralucas365.pausecart.data.Preferences
 import io.github.auroralucas365.pausecart.service.ShoppingService
+import io.github.auroralucas365.pausecart.service.ServiceRuntime
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
 class ShoppingServiceTest {
+    @Test fun separateAppColdEntryAndExit() = withService(Mode.ENTRY, separateApp=true) { _,automation ->
+        waitFor { ShoppingService.overlayVisible }
+        assertEquals(InstrumentationRegistry.getInstrumentation().targetContext.packageName+".test", ServiceRuntime.state.value.lastPackage)
+        assertTrue("Receipt-to-window delay exceeds 2 seconds", ServiceRuntime.state.value.latencyMs!! < 2000)
+        awaitButton(automation,"继续逛逛 · 15 分钟不提醒").recycle()
+        screenshot(automation,"07-separate-app-entry.png")
+        val ctx=InstrumentationRegistry.getInstrumentation().targetContext
+        ctx.startActivity(Intent(ctx,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor { !ShoppingService.overlayVisible }
+    }
+    @Test fun separateAppCheckoutWithoutScrolling() = withService(Mode.CHECKOUT, separateApp=true) { _,automation ->
+        waitFor { ShoppingService.overlayVisible }
+        awaitButton(automation,"先记下来").recycle()
+        assertEquals("提醒已显示", ServiceRuntime.state.value.result)
+    }
     @Test fun checkoutWindowAndExplicitPass() = withService(Mode.CHECKOUT) { prefs,automation ->
         waitFor { ShoppingService.overlayVisible }
         val button=awaitButton(automation,"继续逛逛 · 15 分钟不提醒")
@@ -42,7 +58,7 @@ class ShoppingServiceTest {
         prefs.endPass(pkg)
         waitFor { ShoppingService.overlayVisible }
     }
-    private fun withService(mode: Mode,body: (Preferences,UiAutomation)->Unit) {
+    private fun withService(mode: Mode,separateApp: Boolean=false,body: (Preferences,UiAutomation)->Unit) {
         val instrumentation=InstrumentationRegistry.getInstrumentation(); val ctx=instrumentation.targetContext
         val automation=instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
         automation.serviceInfo=automation.serviceInfo.apply { flags=flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
@@ -52,11 +68,12 @@ class ShoppingServiceTest {
         val own="${ctx.packageName}/io.github.auroralucas365.pausecart.service.ShoppingService"
         val prefs=Preferences(ctx)
         try {
-            prefs.reset(); prefs.consent=true; prefs.setMode(ctx.packageName,mode)
+            prefs.reset(); prefs.consent=true; prefs.setMode(if(separateApp) ctx.packageName+".test" else ctx.packageName,mode)
             shell("settings put secure enabled_accessibility_services ${if(previous.isBlank()) own else "$previous:$own"}")
             shell("settings put secure accessibility_enabled 1")
             waitFor { ShoppingService.connected }
-            ctx.startActivity(Intent().setClassName(ctx,"${ctx.packageName}.FixtureActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            if(separateApp) ctx.startActivity(Intent().setClassName(ctx.packageName+".test","io.github.auroralucas365.pausecart.fixture.ShoppingFixtureActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            else ctx.startActivity(Intent().setClassName(ctx,"${ctx.packageName}.FixtureActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             body(prefs,automation)
         } finally {
             prefs.reset()

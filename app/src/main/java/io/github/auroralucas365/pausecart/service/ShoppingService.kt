@@ -9,7 +9,6 @@ import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.*
-import android.util.Log
 import android.view.*
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -30,15 +29,21 @@ class ShoppingService : AccessibilityService() {
     private var fixtureActive = false
     private var scheduled: Runnable? = null
     private var eventElapsed = 0L
+    private var foregroundWindow = -1
+    private var candidatePackage = ""
+    private var candidateWindow = -1
+    private var candidateStarted = 0L
+    private var candidateRetry: Runnable? = null
+    private var foregroundCheck: Runnable? = null
     private val wm by lazy { getSystemService(WindowManager::class.java) }
     private val screenOff = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            cancelPending(); hide(); visits.foreground(null, SystemClock.elapsedRealtime()); foreground = ""
+            cancelCandidate(); cancelPending(); hide(); visits.foreground(null, SystemClock.elapsedRealtime()); foreground = ""; foregroundWindow = -1
         }
     }
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null || key == "consent" || key == "paused" || key.startsWith("mode_") || key.startsWith("pass_")) {
-            cancelPending(); hide()
+            cancelCandidate(); cancelPending(); hide()
             when {
                 key?.startsWith("mode_") == true -> visits.reset(key.removePrefix("mode_"))
                 key?.startsWith("pass_") == true -> visits.reset(key.removePrefix("pass_"))
@@ -59,20 +64,67 @@ class ShoppingService : AccessibilityService() {
         if (!::prefs.isInitialized || event == null) return
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg == packageName && overlay != null && event.className?.toString() != MainActivity::class.java.name) return
-        if (!interactive()) { cancelPending(); hide(); return }
-        val actual = foregroundPackage()
-        val candidate = actual ?: when (event.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> pkg.takeIf { it.isNotBlank() }
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> pkg.takeIf { it == foreground }
-            else -> null
-        } ?: return
-        if(BuildConfig.DEBUG && (pkg==packageName || Shops.find(pkg)!=null)) Log.d("PauseCartTest","event=${event.eventType}; package=$pkg; class=${event.className}; foreground=$candidate; fixture=$fixtureActive")
-        updateForeground(candidate)
-        val shop = shop(candidate) ?: return
-        ServiceRuntime.update { it.copy(connected = true, lastPackage = candidate, lastEventAt = System.currentTimeMillis()) }
-        evaluate(shop)
+        if (!interactive()) { cancelCandidate(); cancelPending(); hide(); return }
+        // The legacy same-package fixture needs a marker. Real shops and the separate
+        // test APK are identified by event metadata, without fetching their view trees.
+        if (BuildConfig.DEBUG && pkg == packageName) foregroundPackage()
+        val target = shop(pkg)
+        if (target != null) {
+            if (pkg == foreground && event.windowId == foregroundWindow) {
+                recordTarget(pkg)
+                evaluate(target)
+            } else queueCandidate(pkg, event.windowId)
+            return
+        }
+        // Background content churn is irrelevant. Resolve window changes once rather
+        // than making synchronous root-node calls for every app's content event.
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            if (isForegroundWindow(event.windowId) && pkg.isNotBlank()) {
+                cancelCandidate(); updateForeground(pkg); foregroundWindow = event.windowId
+            } else if (candidateRetry == null && foregroundCheck == null) {
+                foregroundCheck = Runnable { foregroundCheck = null; if(candidateRetry == null) checkForeground() }
+                    .also { handler.postDelayed(it, 100) }
+            }
+        }
     }
-    private fun shop(pkg: String): Shop? = Shops.find(pkg) ?: if (BuildConfig.DEBUG && fixtureActive && pkg == packageName) Shop(pkg, "本机测试页") else null
+    private fun shop(pkg: String): Shop? = Shops.find(pkg) ?: if (BuildConfig.DEBUG && (pkg == "$packageName.test" || (fixtureActive && pkg == packageName))) Shop(pkg, "本机测试页") else null
+    private fun recordTarget(pkg: String) {
+        ServiceRuntime.update { it.copy(connected = true, lastPackage = pkg, lastEventAt = System.currentTimeMillis()) }
+    }
+    private fun isForegroundWindow(id: Int): Boolean = id >= 0 && runCatching {
+        windows.any { it.id == id && it.type == AccessibilityWindowInfo.TYPE_APPLICATION && (it.isActive || it.isFocused) }
+    }.getOrDefault(false)
+    private fun queueCandidate(pkg: String, windowId: Int) {
+        if (candidatePackage == pkg && candidateRetry != null) {
+            candidateWindow = windowId // leading edge: new content never postpones a check
+            return
+        }
+        cancelCandidate()
+        foregroundCheck?.let(handler::removeCallbacks); foregroundCheck = null
+        candidatePackage = pkg; candidateWindow = windowId; candidateStarted = SystemClock.elapsedRealtime()
+        recordTarget(pkg); result("收到 App 事件，正在确认前台窗口")
+        var attempt = 0
+        candidateRetry = object : Runnable {
+            override fun run() {
+                if (!interactive()) { cancelCandidate(); return }
+                val id = candidateWindow
+                val confirmed = isForegroundWindow(id) || (attempt >= 2 && foregroundPackage() == pkg)
+                if (confirmed) {
+                    val started = candidateStarted
+                    cancelCandidate(); updateForeground(pkg); foregroundWindow = id
+                    eventElapsed = started
+                    shop(pkg)?.let { evaluate(it) }
+                } else if (++attempt < 4) {
+                    handler.postDelayed(this, 120L * attempt)
+                } else {
+                    cancelCandidate(); result("收到 App 事件，但未确认前台窗口；请退出分屏或分身后重试")
+                }
+            }
+        }.also { handler.postDelayed(it, 40) }
+    }
+    private fun cancelCandidate() {
+        candidateRetry?.let(handler::removeCallbacks); candidateRetry = null; candidatePackage = ""; candidateWindow = -1
+    }
     /** Inspect package metadata only; never extract foreign page text. */
     private fun foregroundPackage(): String? {
         val app = runCatching { windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.isActive }?.root }.getOrNull()
@@ -89,13 +141,13 @@ class ShoppingService : AccessibilityService() {
         markers.forEach { it.recycle() }
     }
     private fun updateForeground(pkg: String) {
-        if (pkg != foreground) { cancelPending(); hide(); foreground = pkg }
+        if (pkg != foreground) { cancelPending(); hide(); foreground = pkg; foregroundWindow = -1; eventElapsed = 0 }
         visits.foreground(shop(pkg)?.packageName, SystemClock.elapsedRealtime())
     }
     private fun checkForeground() {
         if (!::prefs.isInitialized || !interactive()) return
         val pkg = foregroundPackage() ?: return
-        updateForeground(pkg); shop(pkg)?.let { evaluate(it) }
+        updateForeground(pkg); shop(pkg)?.let { recordTarget(pkg); evaluate(it) }
     }
     private fun interactive() = getSystemService(PowerManager::class.java).isInteractive && !getSystemService(KeyguardManager::class.java).isKeyguardLocked
     private fun result(text: String) { ServiceRuntime.update { it.copy(result = text) } }
@@ -109,23 +161,23 @@ class ShoppingService : AccessibilityService() {
             !visits.mayShow(shop.packageName, System.currentTimeMillis(), prefs.passUntil(shop.packageName)) -> { result("本次访问已提醒；离开 30 秒后再次进入会重新提醒"); return }
         }
         if (scheduled != null) return // leading-edge merge; continuous events cannot postpone the scan
-        eventElapsed = SystemClock.elapsedRealtime()
         val mode = prefs.mode(shop.packageName)
+        if (eventElapsed == 0L || mode == Mode.CHECKOUT) eventElapsed = SystemClock.elapsedRealtime()
         scheduled = Runnable {
             scheduled = null
-            val actual = foregroundPackage() ?: foreground
-            if (actual != shop.packageName || !interactive() || prefs.paused || !prefs.consent || prefs.mode(shop.packageName) != mode || prefs.passUntil(shop.packageName) > System.currentTimeMillis()) return@Runnable
+            val confirmed = isForegroundWindow(foregroundWindow) || foregroundPackage() == shop.packageName
+            if (!confirmed || foreground != shop.packageName || !interactive() || prefs.paused || !prefs.consent || prefs.mode(shop.packageName) != mode || prefs.passUntil(shop.packageName) > System.currentTimeMillis()) return@Runnable
             if (mode == Mode.ENTRY) show(shop, null, false)
             else {
                 val root = rootInActiveWindow ?: run { result("当前页面不可读取，可改用打开时提醒"); return@Runnable }
                 if (root.packageName?.toString() != shop.packageName) { root.recycle(); return@Runnable }
                 val texts = readTexts(root)
-                val pkg = if (BuildConfig.DEBUG && shop.packageName == packageName) Shops.all.first().packageName else shop.packageName
+                val pkg = if (BuildConfig.DEBUG && (shop.packageName == packageName || shop.packageName == "$packageName.test")) Shops.all.first().packageName else shop.packageName
                 val decision = CheckoutDetector.evaluate(pkg, texts)
                 if (decision.checkout) show(shop, decision.amountCents, true)
-                else result("已检测到 App；当前未命中下单前试用规则")
+                else result("下单前提醒：${decision.reason.message}")
             }
-        }.also { handler.postDelayed(it, if (mode == Mode.ENTRY) 180 else 300) }
+        }.also { handler.postDelayed(it, if (mode == Mode.ENTRY) 40 else 300) }
     }
     private fun readTexts(root: AccessibilityNodeInfo): List<String> {
         val queue = ArrayDeque<AccessibilityNodeInfo>(); queue.add(root)
@@ -192,7 +244,7 @@ class ShoppingService : AccessibilityService() {
     }
     private fun cancelPending() { scheduled?.let(handler::removeCallbacks); scheduled=null }
     private fun hide() { overlay?.let { runCatching { wm.removeView(it) } }; overlay=null; ServiceRuntime.update { it.copy(overlay=false) } }
-    override fun onInterrupt() { cancelPending(); hide(); ServiceRuntime.update { it.copy(connected=false,result="服务已中断，请重新检查") } }
+    override fun onInterrupt() { cancelCandidate(); cancelPending(); hide(); ServiceRuntime.update { it.copy(connected=false,result="服务已中断，请重新检查") } }
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null); if(::prefs.isInitialized) prefs.unlisten(preferenceListener)
         runCatching { unregisterReceiver(screenOff) }; hide(); instance=null
