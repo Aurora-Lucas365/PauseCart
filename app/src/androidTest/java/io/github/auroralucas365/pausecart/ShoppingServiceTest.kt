@@ -34,6 +34,7 @@ class ShoppingServiceTest {
             waitFor { ShoppingService.overlayVisible }
             val dir = File(ctx.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
             automation.takeScreenshot()?.let { bitmap -> File(dir, "03-service-fixture.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle() }
+            shell("mkdir -p /data/local/tmp/pausecart-screenshots; cp ${File(dir, "03-service-fixture.png").absolutePath} /data/local/tmp/pausecart-screenshots/03-service-fixture.png")
             val button = find(automation, "继续本次购物 · 放行 15 分钟")
             assertNotNull("Overlay must expose its continue action", button)
             assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))

@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import io.github.auroralucas365.pausecart.data.CartDatabase
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import android.os.ParcelFileDescriptor
 
 class AppFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
@@ -40,6 +41,10 @@ class AppFlowTest {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val dir = File(instrumentation.targetContext.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
-        instrumentation.uiAutomation.takeScreenshot()?.let { bitmap -> File(dir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle() }
+        instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+            val file = File(dir, name)
+            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots; cp ${file.absolutePath} /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
+        }
     }
 }

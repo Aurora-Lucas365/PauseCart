@@ -160,6 +160,6 @@ docs/                     兼容、验证与发布记录
 
 README 的导航、兼容性、权限和 FAQ 组织方式参考 [Jev 聊天助手](https://github.com/jev-chat/jev-chat-jarvis)。应用代码独立实现，没有复制 Jev 的聊天采集、模型或 UI 代码。Gradle Wrapper 来自 Gradle（Apache-2.0）；AndroidX 依赖使用其各自许可。
 
-本项目采用 [MIT License](LICENSE)。淘宝、京东、拼多多为对应权利人的产品，本项目与它们无隶属或合作关系。
+本项目采用 [MIT License](LICENSE)。依赖许可副本见 [Apache-2.0](licenses/Apache-2.0.txt)，安装包也包含相应 AndroidX 许可文本。淘宝、京东、拼多多为对应权利人的产品，本项目与它们无隶属或合作关系。
 
 维护者：[Aurora-Lucas365](https://github.com/Aurora-Lucas365)。反馈请使用 [Issues](https://github.com/Aurora-Lucas365/PauseCart/issues)，并先移除个人与支付信息。
