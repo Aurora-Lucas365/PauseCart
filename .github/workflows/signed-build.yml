@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: signed-apk
+  cancel-in-progress: true
 jobs:
   signed-apk:
     if: github.ref == 'refs/heads/main'

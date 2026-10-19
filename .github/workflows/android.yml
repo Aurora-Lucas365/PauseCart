@@ -2,6 +2,7 @@ name: Android build and checks
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
   workflow_dispatch:
 permissions:
