@@ -31,15 +31,34 @@ class ShoppingRulesTest {
         assertEquals(100L, Money.parseCents("￥1"))
         listOf("0", "-1", "NaN", "1.001", "99999999", "1,000", "1e9").forEach { assertNull(Money.parseCents(it)) }
     }
-    @Test fun remindersRespectPassCooldownAndDismissal() {
-        val gate = ReminderGate(); val t = 1_000_000L
-        assertTrue(gate.mayShow(taobao, t, 0, 0))
-        assertFalse(gate.mayShow(taobao, t, t+1, 0))
-        assertFalse(gate.mayShow(taobao, t, 0, t-1000))
-        gate.markShown(taobao, t)
-        assertFalse(gate.mayShow(taobao, t+30_000, 0, 0))
-        assertTrue(gate.mayShow(taobao, t+900_000, 0, 0))
-        assertTrue(gate.mayShow("com.jingdong.app.mall", t, 0, 0))
+    @Test fun entryShowsOnceWithinAVisit() {
+        val gate=VisitGate(); gate.foreground(taobao,1000)
+        assertTrue(gate.mayShow(taobao,1_000_000,0)); gate.markShown(taobao)
+        gate.foreground(taobao,4000)
+        assertFalse(gate.mayShow(taobao,1_100_000,0))
+    }
+    @Test fun shortSwitchDoesNotRepeatButThirtySecondsAwayStartsNewVisit() {
+        val gate=VisitGate(); gate.foreground(taobao,1000); gate.markShown(taobao)
+        gate.foreground(null,2000); gate.foreground(taobao,31_999)
+        assertFalse(gate.mayShow(taobao,1_000_000,0))
+        gate.foreground(null,40_000); gate.foreground(taobao,70_000)
+        assertTrue(gate.mayShow(taobao,1_000_000,0))
+    }
+    @Test fun passesAreExplicitAndIndependentBetweenApps() {
+        val gate=VisitGate(); val jd=Shops.all[1].packageName
+        gate.foreground(taobao,0)
+        assertFalse(gate.mayShow(taobao,1000,1001))
+        assertTrue(gate.mayShow(taobao,1001,1001))
+        gate.markShown(taobao); gate.foreground(jd,10)
+        assertTrue(gate.mayShow(jd,1000,0))
+    }
+    @Test fun modeChangeAndEndPassCanResetOnlyTheirOwnVisit() {
+        val gate=VisitGate(); gate.foreground(taobao,0); gate.markShown(taobao)
+        gate.reset(taobao)
+        assertTrue(gate.mayShow(taobao,1000,0))
+        gate.markShown(taobao); gate.reset(Shops.all[1].packageName)
+        assertFalse(gate.mayShow(taobao,1000,0))
+        gate.resetAll(); assertTrue(gate.mayShow(taobao,1000,0))
     }
     @Test fun shareImportDoesNotInventProductDetails() {
         assertEquals("https://item.example/a", SharedText.link("看看 https://item.example/a，喜欢吗"))

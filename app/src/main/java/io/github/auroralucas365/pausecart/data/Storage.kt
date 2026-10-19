@@ -5,6 +5,10 @@ import android.content.SharedPreferences
 import androidx.room.*
 import io.github.auroralucas365.pausecart.core.Mode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import io.github.auroralucas365.pausecart.core.Shops
 
 @Entity(tableName = "items")
 data class SavedItem(
@@ -34,6 +38,14 @@ abstract class CartDatabase : RoomDatabase() {
     }
 }
 
+data class SettingsSnapshot(
+    val consent: Boolean, val paused: Boolean, val reminders: Boolean, val hours: Int,
+    val modes: Map<String, Mode>, val passes: Map<String, Long>, val storageError: String = ""
+) {
+    fun mode(pkg: String) = modes[pkg] ?: Mode.OFF
+    val signature: String get() = "$consent|$paused|${modes.toSortedMap()}|${passes.toSortedMap()}"
+}
+
 class Preferences(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var consent: Boolean
@@ -42,17 +54,27 @@ class Preferences(context: Context) {
     var reminders: Boolean
         get() = prefs.getBoolean("reminders", false)
         set(value) { prefs.edit().putBoolean("reminders", value).apply() }
+    var hours: Int
+        get() = prefs.getInt("hours", 24).takeIf { it in listOf(1, 24, 72) } ?: 24
+        set(value) { prefs.edit().putInt("hours", value).apply() }
     var paused: Boolean
         get() = prefs.getBoolean("paused", false)
         set(value) { prefs.edit().putBoolean("paused", value).apply() }
-    var lastDismissed: Long
-        get() = prefs.getLong("dismissed", 0)
-        set(value) { prefs.edit().putLong("dismissed", value).apply() }
     fun mode(pkg: String): Mode = runCatching { Mode.valueOf(prefs.getString("mode_$pkg", "OFF")!!) }.getOrDefault(Mode.OFF)
-    fun setMode(pkg: String, mode: Mode) { prefs.edit().putString("mode_$pkg", mode.name).apply() }
+    fun setMode(pkg: String, mode: Mode) { prefs.edit().putString("mode_$pkg", mode.name).remove("pass_$pkg").apply() }
     fun passUntil(pkg: String) = prefs.getLong("pass_$pkg", 0)
     fun pass(pkg: String) { prefs.edit().putLong("pass_$pkg", System.currentTimeMillis() + 15 * 60_000).apply() }
     fun clearPasses() { prefs.edit().also { editor -> prefs.all.keys.filter { it.startsWith("pass_") }.forEach(editor::remove) }.apply() }
+    fun endPass(pkg: String) { prefs.edit().remove("pass_$pkg").apply() }
+    fun snapshot() = SettingsSnapshot(consent, paused, reminders, hours,
+        Shops.all.associate { it.packageName to mode(it.packageName) },
+        Shops.all.associate { it.packageName to passUntil(it.packageName) })
+    fun observe(): Flow<SettingsSnapshot> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(snapshot()) }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(snapshot())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
     fun reset() { prefs.edit().clear().apply() }
     fun listen(listener: SharedPreferences.OnSharedPreferenceChangeListener) { prefs.registerOnSharedPreferenceChangeListener(listener) }
     fun unlisten(listener: SharedPreferences.OnSharedPreferenceChangeListener) { prefs.unregisterOnSharedPreferenceChangeListener(listener) }

@@ -3,7 +3,7 @@ package io.github.auroralucas365.pausecart.core
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-enum class Mode(val label: String) { OFF("关闭"), ENTRY("入口提醒"), CHECKOUT("结算提醒 · 实验") }
+enum class Mode(val label: String) { OFF("关闭"), ENTRY("打开时提醒"), CHECKOUT("下单前提醒 · 试用") }
 data class Shop(val packageName: String, val name: String)
 object Shops {
     val all = listOf(Shop("com.taobao.taobao", "淘宝"), Shop("com.jingdong.app.mall", "京东"), Shop("com.xunmeng.pinduoduo", "拼多多"))
@@ -38,11 +38,27 @@ object Money {
     fun format(cents: Long) = BigDecimal.valueOf(cents, 2).toPlainString()
 }
 
-class ReminderGate {
-    private val shown = mutableMapOf<String, Long>()
-    fun mayShow(pkg: String, now: Long, passUntil: Long, lastDismissed: Long): Boolean =
-        now >= passUntil && now - lastDismissed >= 15_000 && (shown[pkg]?.let { now - it >= 15 * 60_000 } ?: true)
-    fun markShown(pkg: String, now: Long) { shown[pkg] = now }
+/** Times are monotonic elapsed milliseconds, never wall-clock dates. */
+class VisitGate(private val newVisitAfter: Long = 30_000) {
+    private data class Visit(var shown: Boolean = false, var leftAt: Long? = null)
+    private val visits = mutableMapOf<String, Visit>()
+    var active: String? = null
+        private set
+    fun foreground(pkg: String?, elapsed: Long) {
+        if (pkg == active) return
+        active?.let { visits.getOrPut(it) { Visit() }.leftAt = elapsed }
+        active = pkg
+        if (pkg != null) {
+            val visit = visits.getOrPut(pkg) { Visit() }
+            if (visit.leftAt?.let { elapsed - it >= newVisitAfter } == true) visit.shown = false
+            visit.leftAt = null
+        }
+    }
+    fun mayShow(pkg: String, wallTime: Long, passUntil: Long): Boolean =
+        active == pkg && wallTime >= passUntil && visits[pkg]?.shown != true
+    fun markShown(pkg: String) { visits.getOrPut(pkg) { Visit() }.shown = true }
+    fun reset(pkg: String) { visits.remove(pkg) }
+    fun resetAll() { visits.clear() }
 }
 
 object SharedText {

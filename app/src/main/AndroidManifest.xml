@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <queries>
+        <package android:name="com.taobao.taobao" />
+        <package android:name="com.jingdong.app.mall" />
+        <package android:name="com.xunmeng.pinduoduo" />
+    </queries>
     <application android:allowBackup="false" android:label="@string/app_name"
         android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@drawable/ic_pausecart" android:roundIcon="@drawable/ic_pausecart"
@@ -20,7 +25,7 @@
         </activity>
         <service android:name=".service.ShoppingService" android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:label="缓购 · 可选购物提醒">
+            android:label="缓购 · 购物提醒">
             <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/shopping_service" />
         </service>
