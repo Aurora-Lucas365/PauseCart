@@ -59,10 +59,6 @@ class ShoppingService : AccessibilityService() {
         if (!::prefs.isInitialized || event == null) return
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg == packageName && overlay != null && event.className?.toString() != MainActivity::class.java.name) return
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg == packageName) {
-            if(BuildConfig.DEBUG && event.className?.toString()?.endsWith("FixtureActivity") == true) fixtureActive=true
-            else if(event.className?.toString()==MainActivity::class.java.name) fixtureActive=false
-        }
         if (!interactive()) { cancelPending(); hide(); return }
         val actual = foregroundPackage()
         val candidate = actual ?: when (event.eventType) {
@@ -80,10 +76,17 @@ class ShoppingService : AccessibilityService() {
     /** Inspect package metadata only; never extract foreign page text. */
     private fun foregroundPackage(): String? {
         val app = runCatching { windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.isActive }?.root }.getOrNull()
-        if (app != null) { val pkg = app.packageName?.toString(); app.recycle(); if (!pkg.isNullOrBlank()) return pkg }
+        if (app != null) { val pkg = app.packageName?.toString(); if(BuildConfig.DEBUG) identifyLocalFixture(app); app.recycle(); if (!pkg.isNullOrBlank()) return pkg }
         val root = rootInActiveWindow ?: return null
-        val pkg = root.packageName?.toString(); root.recycle()
+        val pkg = root.packageName?.toString(); if(BuildConfig.DEBUG) identifyLocalFixture(root); root.recycle()
         return pkg?.takeUnless { it == packageName && overlay != null }
+    }
+    /** Debug page identity only; production routing always uses the distinct shop package. */
+    private fun identifyLocalFixture(root: AccessibilityNodeInfo) {
+        if(root.packageName?.toString()!=packageName) { fixtureActive=false; return }
+        val markers=root.findAccessibilityNodeInfosByText("本机模拟页面 · 仅测试")
+        fixtureActive=markers.isNotEmpty()
+        markers.forEach { it.recycle() }
     }
     private fun updateForeground(pkg: String) {
         if (pkg != foreground) { cancelPending(); hide(); foreground = pkg }
