@@ -61,6 +61,8 @@ class ShoppingServiceTest {
         } finally {
             prefs.reset()
             if(previous.isBlank()) shell("settings delete secure enabled_accessibility_services") else shell("settings put secure enabled_accessibility_services $previous")
+            if(own !in previous.split(':')) waitFor { !ShoppingService.connected }
+            ctx.startActivity(Intent(ctx,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
         }
     }
     private fun screenshot(automation: UiAutomation,name: String) {
