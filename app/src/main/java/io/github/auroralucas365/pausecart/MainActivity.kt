@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.auroralucas365.pausecart.core.*
@@ -93,7 +94,11 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
         val observer = LifecycleEventObserver { _, event -> if(event == Lifecycle.Event.ON_RESUME) { refresh++; now = System.currentTimeMillis() } }
         lifecycle.addObserver(observer); onDispose { lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(30_000); now = System.currentTimeMillis() } }
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(30_000) }
+        }
+    }
     LaunchedEffect(incoming?.nonce) { if(incoming != null) { draft = incoming; consumeIncoming() } }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         prefs.reminders = granted; refresh++

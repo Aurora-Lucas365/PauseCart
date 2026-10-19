@@ -25,6 +25,7 @@ class AppFlowTest {
         compose.onNodeWithText("手动记录 · 已放弃（自报）").assertExists()
     }
     private fun screenshot(name: String) {
+        compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val dir = File(instrumentation.targetContext.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
         instrumentation.uiAutomation.takeScreenshot()?.let { bitmap -> File(dir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle() }
