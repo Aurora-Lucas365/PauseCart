@@ -8,6 +8,8 @@
 - 下单前试用显示无可读文字、缺订单标题、缺提交按钮等原因。仍未完成三平台真实结算验证，不保证每次出现。
 - 新增不同包名的本机测试 App，覆盖跨应用进入、离开和结算触发；该测试不替代真实商家验证。
 
+已通过 11 项规则测试、Android 8 / 13 / 15 / 16 模拟器各 6 项流程，以及 lint 和正式签名检查。
+
 Android 8.0+。同签名覆盖升级，不要卸载。权限没有增加，自动提醒仍只需无障碍服务，到期通知按需开启。
 
 [验证记录](https://github.com/Aurora-Lucas365/PauseCart/blob/main/docs/VALIDATION.md) · [使用帮助](https://github.com/Aurora-Lucas365/PauseCart/blob/main/docs/GUIDE.md)

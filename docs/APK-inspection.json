@@ -1,9 +1,9 @@
 {
-  "sha256": "b1edf8fae61c3985f8aaef366f2b08cf7cdcf76b4536d521455995a366beada2",
+  "sha256": "426e5a49e14d12ec3f4f0274337b6b34e5eee1d641751d2315b868db5eb3071e",
   "size_bytes": 6864021,
   "manifest": {
-    "versionCode": 2,
-    "versionName": "0.2.0-beta.1",
+    "versionCode": 3,
+    "versionName": "0.2.0-beta.2",
     "compileSdkVersion": 35,
     "compileSdkVersionCodename": "15",
     "package": "io.github.auroralucas365.pausecart",
