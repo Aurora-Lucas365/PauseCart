@@ -18,8 +18,8 @@ import java.io.File
 class ShoppingServiceTest {
     @Test fun checkoutWindowAndExplicitPass() = withService(Mode.CHECKOUT) { prefs,automation ->
         waitFor { ShoppingService.overlayVisible }
-        screenshot(automation,"05-checkout-window.png")
         val button=awaitButton(automation,"继续逛逛 · 15 分钟不提醒")
+        screenshot(automation,"05-checkout-window.png")
         assertNotNull(button); assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)); button.recycle()
         waitFor { prefs.passUntil(InstrumentationRegistry.getInstrumentation().targetContext.packageName)>System.currentTimeMillis() }
         assertFalse(ShoppingService.overlayVisible)
@@ -27,6 +27,7 @@ class ShoppingServiceTest {
     @Test fun entryModeChangesAndPauseApplyImmediately() = withService(Mode.ENTRY) { prefs,automation ->
         val pkg=InstrumentationRegistry.getInstrumentation().targetContext.packageName
         waitFor { ShoppingService.overlayVisible }
+        awaitButton(automation,"继续逛逛 · 15 分钟不提醒").recycle()
         screenshot(automation,"06-entry-window.png")
         prefs.setMode(pkg,Mode.OFF)
         waitFor { !ShoppingService.overlayVisible }
@@ -63,6 +64,7 @@ class ShoppingServiceTest {
         }
     }
     private fun screenshot(automation: UiAutomation,name: String) {
+        Thread.sleep(200)
         ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots")).use { it.readBytes() }
         ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
     }

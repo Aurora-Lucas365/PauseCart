@@ -28,8 +28,10 @@ class AppFlowTest {
         compose.onNodeWithTag("add_item").performClick()
         compose.onNodeWithTag("item_title").performTextInput("测试冷静商品")
         compose.onNodeWithTag("item_price").performTextInput("199.90")
+        compose.onNodeWithTag("item_price").performImeAction()
         screenshot("02-add-item.png")
-        compose.onNodeWithTag("save_item").performScrollTo().performClick()
+        compose.onNodeWithTag("add_form").performScrollToNode(hasTestTag("save_item"))
+        compose.onNodeWithTag("save_item").performClick()
         compose.waitUntil(5000) { compose.onAllNodesWithText("测试冷静商品").fetchSemanticsNodes().isNotEmpty() }
         val saved=runBlocking { CartDatabase.get(ctx).items().observe().first { it.any { item -> item.title=="测试冷静商品" } }.first { it.title=="测试冷静商品" } }
         assertEquals(19990L,saved.cents)
@@ -43,6 +45,7 @@ class AppFlowTest {
         val prefs=Preferences(compose.activity)
         compose.runOnIdle { prefs.consent=true; prefs.setMode(Shops.all.first().packageName,io.github.auroralucas365.pausecart.core.Mode.OFF) }
         compose.waitForIdle()
+        Thread.sleep(200) // allow SurfaceFlinger to draw the frame before the artifact capture
         val switch=compose.onNodeWithTag("shop_${Shops.all.first().packageName}")
         switch.assertIsOff()
         repeat(20) { index ->

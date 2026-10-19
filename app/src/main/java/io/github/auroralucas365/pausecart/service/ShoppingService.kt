@@ -71,7 +71,6 @@ class ShoppingService : AccessibilityService() {
             else -> null
         } ?: return
         if(BuildConfig.DEBUG && (pkg==packageName || Shops.find(pkg)!=null)) Log.d("PauseCartTest","event=${event.eventType}; package=$pkg; class=${event.className}; foreground=$candidate; fixture=$fixtureActive")
-        eventElapsed = SystemClock.elapsedRealtime()
         updateForeground(candidate)
         val shop = shop(candidate) ?: return
         ServiceRuntime.update { it.copy(connected = true, lastPackage = candidate, lastEventAt = System.currentTimeMillis()) }
@@ -107,6 +106,7 @@ class ShoppingService : AccessibilityService() {
             !visits.mayShow(shop.packageName, System.currentTimeMillis(), prefs.passUntil(shop.packageName)) -> { result("本次访问已提醒；离开 30 秒后再次进入会重新提醒"); return }
         }
         if (scheduled != null) return // leading-edge merge; continuous events cannot postpone the scan
+        eventElapsed = SystemClock.elapsedRealtime()
         val mode = prefs.mode(shop.packageName)
         scheduled = Runnable {
             scheduled = null

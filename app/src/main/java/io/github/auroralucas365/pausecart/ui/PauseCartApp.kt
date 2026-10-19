@@ -31,11 +31,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.auroralucas365.pausecart.*
@@ -52,12 +54,14 @@ private val Light = lightColorScheme(primary=Color(0xFF30674F),onPrimary=Color.W
     primaryContainer=Color(0xFFE9F2E8),onPrimaryContainer=Color(0xFF20352D),
     secondary=Color(0xFF30674F),secondaryContainer=Color(0xFFE9F2E8),onSecondaryContainer=Color(0xFF20352D),
     background=Color(0xFFFAFBF8),surface=Color(0xFFFAFBF8),surfaceVariant=Color(0xFFF0F3ED),
-    onBackground=Color(0xFF20352D),onSurface=Color(0xFF20352D),onSurfaceVariant=Color(0xFF627169),outlineVariant=Color(0xFFE0E7DF))
+    onBackground=Color(0xFF20352D),onSurface=Color(0xFF20352D),onSurfaceVariant=Color(0xFF627169),outline=Color(0xFF7D8B82),outlineVariant=Color(0xFFE0E7DF),
+    surfaceContainerLowest=Color.White,surfaceContainerLow=Color(0xFFFAFBF8),surfaceContainer=Color(0xFFF0F3ED),surfaceContainerHigh=Color(0xFFEBF0E9),surfaceContainerHighest=Color(0xFFE0E7DF))
 private val Dark = darkColorScheme(primary=Color(0xFF92D1AC),onPrimary=Color(0xFF123425),
     primaryContainer=Color(0xFF293D31),onPrimaryContainer=Color(0xFFE5EEE9),
     secondary=Color(0xFF92D1AC),secondaryContainer=Color(0xFF293D31),onSecondaryContainer=Color(0xFFE5EEE9),
     background=Color(0xFF151D19),surface=Color(0xFF151D19),surfaceVariant=Color(0xFF202C25),
-    onBackground=Color(0xFFE5EEE9),onSurface=Color(0xFFE5EEE9),onSurfaceVariant=Color(0xFFA9B7AE),outlineVariant=Color(0xFF3A473F))
+    onBackground=Color(0xFFE5EEE9),onSurface=Color(0xFFE5EEE9),onSurfaceVariant=Color(0xFFA9B7AE),outline=Color(0xFF7D8B82),outlineVariant=Color(0xFF3A473F),
+    surfaceContainerLowest=Color(0xFF121A16),surfaceContainerLow=Color(0xFF19221D),surfaceContainer=Color(0xFF202C25),surfaceContainerHigh=Color(0xFF29362E),surfaceContainerHighest=Color(0xFF344238))
 
 @Composable
 fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
@@ -75,6 +79,7 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var info by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf<ImportDraft?>(null) }
+    var saving by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<SavedItem?>(null) }
     var consent by remember { mutableStateOf(false) }
     var experimental by remember { mutableStateOf<Shop?>(null) }
@@ -89,7 +94,7 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
         val observer=LifecycleEventObserver { _,event -> if(event==Lifecycle.Event.ON_RESUME) { refresh++; now=System.currentTimeMillis() } }
         owner.lifecycle.addObserver(observer); onDispose { owner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(Unit) { while(true) { now=System.currentTimeMillis(); delay(1000) } }
+    LaunchedEffect(owner) { owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while(true) { now=System.currentTimeMillis(); delay(1000) } } }
     LaunchedEffect(incoming?.nonce) { incoming?.let { draft=it; consumeIncoming() } }
     val enabled=remember(refresh) { ctx.getSystemService(AccessibilityManager::class.java).getEnabledAccessibilityServiceList(-1).any { it.resolveInfo.serviceInfo.packageName==ctx.packageName && it.resolveInfo.serviceInfo.name==ShoppingService::class.java.name } }
     val installed=remember(refresh) { Shops.all.associate { it.packageName to runCatching { ctx.packageManager.getApplicationInfo(it.packageName,0).enabled }.getOrDefault(false) } }
@@ -240,13 +245,16 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
                 }
             }
         }
-        draft?.let { initial -> AddItemSheet(initial,cfg.hours,dismiss={ draft=null },save={ title,cents,url,hours ->
+        draft?.let { initial -> AddItemSheet(initial,cfg.hours,saving,dismiss={ if(!saving) draft=null },save={ title,cents,url,hours ->
+            if(!saving) {
+            saving=true
             scope.launch { runCatching {
                 val item=SavedItem(title=title,cents=cents,link=url,source=initial.source,dueAt=System.currentTimeMillis()+hours*60*60_000L)
                 val id=dao.insert(item); ReminderScheduler.schedule(ctx,item.copy(id=id)); draft=null; page=1; completed=false
-            }.onFailure { info="保存失败，内容仍在表单中，请重试。" } }
+            }.onFailure { info="保存失败，内容仍在表单中，请重试。" }; saving=false }
+            }
         }) }
-        detail?.let { item -> ModalBottomSheet(onDismissRequest={ detail=null }) {
+        detail?.let { item -> ModalBottomSheet(onDismissRequest={ detail=null },containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text(item.title,fontSize=22.sp,fontWeight=FontWeight.Medium)
                 Text(item.cents?.let { "¥${Money.format(it)}" } ?: "未记录价格")
@@ -265,7 +273,7 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
         } }
         if(consent) AlertDialog(onDismissRequest={ consent=false },title={ Text("开启购物提醒") },text={ Text("无障碍权限允许服务读取屏幕。缓购只在你选择的购物 App 中判断入口或下单页面，在本机处理，不上传、不保存页面，不代替你操作。\n\n你可以随时关闭；仅使用清单不需要授权。") },confirmButton={ TextButton(onClick={ prefs.consent=true; consent=false; systemSettings() }) { Text("同意并前往设置") } },dismissButton={ TextButton(onClick={ consent=false }) { Text("暂不开启") } })
         experimental?.let { shop -> AlertDialog(onDismissRequest={ experimental=null },title={ Text("试用下单前提醒") },text={ Text("${shop.name}的实际结算页面尚需验证，可能漏报或误判。识别不到时可使用打开时提醒。") },confirmButton={ TextButton(onClick={ setMode(shop,Mode.CHECKOUT); experimental=null }) { Text("试用") } },dismissButton={ TextButton(onClick={ experimental=null }) { Text("取消") } }) }
-        if(preview) ModalBottomSheet(onDismissRequest={ preview=false }) {
+        if(preview) ModalBottomSheet(onDismissRequest={ preview=false },containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(horizontal=22.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("缓购 · 界面预览",color=MaterialTheme.colorScheme.primary,fontSize=13.sp)
                 Text("这次有明确要买的东西吗？",fontSize=23.sp,fontWeight=FontWeight.Medium)
@@ -286,22 +294,21 @@ fun PauseCartApp(incoming: ImportDraft?, consumeIncoming: () -> Unit) {
 @Composable private fun Section(content: @Composable ColumnScope.() -> Unit) { Surface(color=MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(16.dp)) { Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp),content=content) } }
 @Composable private fun SettingsRow(title: String, content: @Composable () -> Unit) { Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) { Text(title,Modifier.weight(1f)); content() } }
 @Composable private fun CheckLine(title: String,value: String) { Column { Text(title,fontWeight=FontWeight.Medium,fontSize=13.sp); Text(value,fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant) } }
-@Composable private fun AddItemSheet(initial: ImportDraft,defaultHours: Int,dismiss: () -> Unit,save: (String,Long?,String,Int)->Unit) {
+@Composable private fun AddItemSheet(initial: ImportDraft,defaultHours: Int,saving: Boolean,dismiss: () -> Unit,save: (String,Long?,String,Int)->Unit) {
     var title by remember(initial.nonce) { mutableStateOf(initial.title) }
     var price by remember(initial.nonce) { mutableStateOf(initial.cents?.let(Money::format).orEmpty()) }
     var link by remember(initial.nonce) { mutableStateOf(initial.link) }
     var hours by remember(initial.nonce) { mutableIntStateOf(defaultHours) }
     var error by remember { mutableStateOf("") }
-    var saving by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest=dismiss) {
-        LazyColumn(Modifier.fillMaxWidth().imePadding(),contentPadding=PaddingValues(start=22.dp,end=22.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+    ModalBottomSheet(onDismissRequest=dismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=MaterialTheme.colorScheme.surface) {
+        LazyColumn(Modifier.fillMaxWidth().imePadding().testTag("add_form"),contentPadding=PaddingValues(start=22.dp,end=22.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             item { Text("先记下来",fontSize=24.sp,fontWeight=FontWeight.Medium) }
             item { OutlinedTextField(title,{ title=it.take(120) },label={ Text("想买什么") },modifier=Modifier.fillMaxWidth().testTag("item_title"),maxLines=3) }
-            item { OutlinedTextField(price,{ price=it.take(12) },label={ Text("价格（可不填）") },modifier=Modifier.fillMaxWidth().testTag("item_price"),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),singleLine=true) }
+            item { OutlinedTextField(price,{ price=it.take(12) },label={ Text("价格（可不填）") },modifier=Modifier.fillMaxWidth().testTag("item_price"),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal,imeAction=ImeAction.Done),singleLine=true) }
             item { OutlinedTextField(link,{ link=it.take(2000) },label={ Text("链接或分享口令（可不填）") },modifier=Modifier.fillMaxWidth(),maxLines=3) }
             item { Text("先等多久？"); Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { listOf(1,24,72).forEach { value -> FilterChip(selected=hours==value,onClick={ hours=value },label={ Text("${value}小时") }) } } }
             if(error.isNotBlank()) item { Text(error,color=MaterialTheme.colorScheme.error) }
-            item { Button(onClick={ val cents=if(price.isBlank()) null else Money.parseCents(price); when { title.isBlank() -> error="写下想买的东西吧"; price.isNotBlank() && cents==null -> error="价格需大于 0，最多两位小数"; else -> { saving=true; save(title.trim(),cents,link.trim(),hours); saving=false } } },enabled=!saving,modifier=Modifier.fillMaxWidth().testTag("save_item")) { Text("放入冷静清单") } }
+            item { Button(onClick={ val cents=if(price.isBlank()) null else Money.parseCents(price); when { title.isBlank() -> error="写下想买的东西吧"; price.isNotBlank() && cents==null -> error="价格需大于 0，最多两位小数"; else -> save(title.trim(),cents,link.trim(),hours) } },enabled=!saving,modifier=Modifier.fillMaxWidth().testTag("save_item")) { Text(if(saving) "正在保存…" else "放入冷静清单") } }
         }
     }
 }
