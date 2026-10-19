@@ -14,6 +14,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
 import io.github.auroralucas365.pausecart.MainActivity
+import io.github.auroralucas365.pausecart.BuildConfig
 import io.github.auroralucas365.pausecart.core.*
 import io.github.auroralucas365.pausecart.data.Preferences
 import java.util.ArrayDeque
@@ -44,7 +45,8 @@ class ShoppingService : AccessibilityService() {
             pending?.let(handler::removeCallbacks)
             hide()
         }
-        val shop = Shops.find(pkg) ?: return
+        // A debug-only local fixture lets instrumentation exercise the service without merchant apps.
+        val shop = Shops.find(pkg) ?: if (BuildConfig.DEBUG && pkg == packageName && prefs.mode(pkg) == Mode.CHECKOUT) Shop(pkg, "本机测试页") else return
         if (!prefs.consent || prefs.paused || prefs.mode(pkg) == Mode.OFF) { hide(); return }
         if (!getSystemService(PowerManager::class.java).isInteractive || getSystemService(KeyguardManager::class.java).isKeyguardLocked) { hide(); return }
         val now = System.currentTimeMillis()
@@ -59,7 +61,8 @@ class ShoppingService : AccessibilityService() {
             val root = rootInActiveWindow ?: return@Runnable
             if (root.packageName?.toString() != pkg) { root.recycle(); return@Runnable }
             val texts = readTexts(root)
-            val decision = CheckoutDetector.evaluate(pkg, texts)
+            val rulePkg = if (BuildConfig.DEBUG && pkg == packageName) Shops.all.first().packageName else pkg
+            val decision = CheckoutDetector.evaluate(rulePkg, texts)
             if (decision.checkout && overlay == null) show(shop, decision.amountCents, true)
         }.also { handler.postDelayed(it, 350) }
     }

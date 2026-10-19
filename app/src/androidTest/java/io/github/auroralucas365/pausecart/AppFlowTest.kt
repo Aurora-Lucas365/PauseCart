@@ -7,10 +7,16 @@ import org.junit.Test
 import androidx.test.platform.app.InstrumentationRegistry
 import android.graphics.Bitmap
 import java.io.File
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import org.junit.Assert.assertEquals
 
 class AppFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Test fun saveItemAndRecordDecisionWithoutAccessibilityPermission() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        assertEquals(0, ctx.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
+        assertEquals(PackageManager.PERMISSION_DENIED, ctx.packageManager.checkPermission("android.permission.INTERNET", ctx.packageName))
         screenshot("01-home.png")
         compose.onNodeWithTag("add_item").performClick()
         compose.onNodeWithTag("item_title").performTextInput("测试冷静商品")
