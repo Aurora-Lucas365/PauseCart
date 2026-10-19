@@ -14,6 +14,8 @@
 
 > **先看状态：**本项目提供可用的本机冷静清单，以及可选的购物 App 入口提醒和实验性结算识别。结算规则尚未在淘宝、京东、拼多多真实页面验证，可能漏报、误报或完全不可用。不是付款拦截器，不能确保阻止交易。请查看 [兼容记录](docs/COMPATIBILITY.md) 和 [验证记录](docs/VALIDATION.md)。
 
+已通过：7 项规则测试、Android 8.0 / 15 模拟器各 2 项流程测试、lint（0 错误）、Release 签名与安装包检查。模拟器自动提醒测试使用本机模拟页，**不等于真实商家兼容验证**。
+
 ## 适合谁
 
 - 网购时容易临时起意，希望在下单前给自己一点思考时间的人。
@@ -21,6 +23,14 @@
 - 愿意帮助验证不同安卓手机和购物 App 版本的早期测试者。
 
 不适用于依靠软件确保禁止付款、管理他人手机或诊断 / 治疗消费行为问题的场景。
+
+## 界面预览
+
+Android 15 模拟器截图；分享导入使用示例文字和 example.com 链接，不是真实商品或订单。
+
+| 首页 | 分享导入 / 冷静记录 |
+| --- | --- |
+| <img src="docs/images/home.png" alt="缓购首页" width="300" /> | <img src="docs/images/share.png" alt="分享导入示例" width="300" /> |
 
 ## 第一版能做什么
 
@@ -163,3 +173,10 @@ README 的导航、兼容性、权限和 FAQ 组织方式参考 [Jev 聊天助�
 本项目采用 [MIT License](LICENSE)。依赖许可副本见 [Apache-2.0](licenses/Apache-2.0.txt)，安装包也包含相应 AndroidX 许可文本。淘宝、京东、拼多多为对应权利人的产品，本项目与它们无隶属或合作关系。
 
 维护者：[Aurora-Lucas365](https://github.com/Aurora-Lucas365)。反馈请使用 [Issues](https://github.com/Aurora-Lucas365/PauseCart/issues)，并先移除个人与支付信息。
+
+## 平台限制参考
+
+- [Android 无障碍服务与生命周期](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService)
+- [Android 敏感界面保护](https://developer.android.com/blog/posts/enhancing-android-security-stop-malware-from-snooping-on-your-app-data)
+- [Android 17 高级保护说明](https://blog.google/security/whats-new-in-android-security-privacy-2026/)
+- [Google Play 无障碍服务声明与审核政策](https://support.google.com/googleplay/android-developer/answer/10964491?hl=zh-Hans)

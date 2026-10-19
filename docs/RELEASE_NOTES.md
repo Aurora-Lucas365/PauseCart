@@ -29,4 +29,6 @@ Android 8.0+；安装包含 ARM64 / ARMv7 / x86 / x86_64 四种 ABI，不依赖 
 
 验证结果与源码对应关系见 [验证记录](https://github.com/Aurora-Lucas365/PauseCart/blob/main/docs/VALIDATION.md)。
 
+已通过 7 项规则测试、Android 8.0 / 15 模拟器各 2 项流程测试和 lint（0 错误）；签名 APK 校验通过。模拟器使用本机模拟页面，不代表真实购物平台识别已验证。
+
 完整 [README](https://github.com/Aurora-Lucas365/PauseCart)、[隐私说明](https://github.com/Aurora-Lucas365/PauseCart/blob/main/PRIVACY.md)、[兼容反馈](https://github.com/Aurora-Lucas365/PauseCart/issues/new/choose)。
