@@ -1,6 +1,7 @@
 package io.github.auroralucas365.pausecart
 
 import android.app.UiAutomation
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
@@ -43,6 +44,7 @@ class ShoppingServiceTest {
     private fun withService(mode: Mode,body: (Preferences,UiAutomation)->Unit) {
         val instrumentation=InstrumentationRegistry.getInstrumentation(); val ctx=instrumentation.targetContext
         val automation=instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        automation.serviceInfo=automation.serviceInfo.apply { flags=flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
         fun shell(command: String)=ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
         val previous=shell("settings get secure enabled_accessibility_services").takeUnless { it=="null" }.orEmpty()
         check(previous.matches(Regex("[A-Za-z0-9._/:]*")))
@@ -61,11 +63,7 @@ class ShoppingServiceTest {
         }
     }
     private fun screenshot(automation: UiAutomation,name: String) {
-        val ctx=InstrumentationRegistry.getInstrumentation().targetContext
-        val dir=File(ctx.getExternalFilesDir(null),"screenshots").apply { mkdirs() }
-        automation.takeScreenshot()?.let { bitmap -> val file=File(dir,name); file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }; bitmap.recycle()
-            ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots; cp ${file.absolutePath} /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
-        }
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots; screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
     }
     private fun find(automation: UiAutomation,text: String): AccessibilityNodeInfo? {
         for(window in automation.windows) { val root=window.root ?: continue; val nodes=root.findAccessibilityNodeInfosByText(text); root.recycle(); val target=nodes.firstOrNull { it.text?.toString()==text && it.isVisibleToUser }; nodes.filter { it!==target }.forEach { it.recycle() }; if(target!=null) return target }

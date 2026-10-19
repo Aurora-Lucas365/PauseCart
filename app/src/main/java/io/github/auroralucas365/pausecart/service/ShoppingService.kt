@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.*
+import android.util.Log
 import android.view.*
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -59,7 +60,8 @@ class ShoppingService : AccessibilityService() {
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg == packageName && overlay != null && event.className?.toString() != MainActivity::class.java.name) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg == packageName) {
-            fixtureActive = BuildConfig.DEBUG && event.className?.toString()?.endsWith("FixtureActivity") == true
+            if(BuildConfig.DEBUG && event.className?.toString()?.endsWith("FixtureActivity") == true) fixtureActive=true
+            else if(event.className?.toString()==MainActivity::class.java.name) fixtureActive=false
         }
         if (!interactive()) { cancelPending(); hide(); return }
         val actual = foregroundPackage()
@@ -68,6 +70,7 @@ class ShoppingService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> pkg.takeIf { it == foreground }
             else -> null
         } ?: return
+        if(BuildConfig.DEBUG && (pkg==packageName || Shops.find(pkg)!=null)) Log.d("PauseCartTest","event=${event.eventType}; package=$pkg; class=${event.className}; foreground=$candidate; fixture=$fixtureActive")
         eventElapsed = SystemClock.elapsedRealtime()
         updateForeground(candidate)
         val shop = shop(candidate) ?: return
