@@ -19,7 +19,7 @@ class ShoppingServiceTest {
     @Test fun checkoutWindowAndExplicitPass() = withService(Mode.CHECKOUT) { prefs,automation ->
         waitFor { ShoppingService.overlayVisible }
         screenshot(automation,"05-checkout-window.png")
-        val button=find(automation,"继续逛逛 · 15 分钟不提醒")
+        val button=awaitButton(automation,"继续逛逛 · 15 分钟不提醒")
         assertNotNull(button); assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)); button.recycle()
         waitFor { prefs.passUntil(InstrumentationRegistry.getInstrumentation().targetContext.packageName)>System.currentTimeMillis() }
         assertFalse(ShoppingService.overlayVisible)
@@ -36,7 +36,7 @@ class ShoppingServiceTest {
         waitFor { !ShoppingService.overlayVisible }
         prefs.paused=false
         waitFor { ShoppingService.overlayVisible }
-        find(automation,"继续逛逛 · 15 分钟不提醒")!!.let { assertTrue(it.performAction(AccessibilityNodeInfo.ACTION_CLICK)); it.recycle() }
+        awaitButton(automation,"继续逛逛 · 15 分钟不提醒").let { assertTrue(it.performAction(AccessibilityNodeInfo.ACTION_CLICK)); it.recycle() }
         waitFor { prefs.passUntil(pkg)>System.currentTimeMillis() && !ShoppingService.overlayVisible }
         prefs.endPass(pkg)
         waitFor { ShoppingService.overlayVisible }
@@ -63,7 +63,13 @@ class ShoppingServiceTest {
         }
     }
     private fun screenshot(automation: UiAutomation,name: String) {
-        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots; screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots")).use { it.readBytes() }
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
+    }
+    private fun awaitButton(automation: UiAutomation,text: String): AccessibilityNodeInfo {
+        val end=SystemClock.elapsedRealtime()+5000
+        while(SystemClock.elapsedRealtime()<end) { find(automation,text)?.let { return it }; Thread.sleep(50) }
+        error("Overlay button not laid out: ${automation.windows.map { it.type to it.title }}")
     }
     private fun find(automation: UiAutomation,text: String): AccessibilityNodeInfo? {
         for(window in automation.windows) { val root=window.root ?: continue; val nodes=root.findAccessibilityNodeInfosByText(text); root.recycle(); val target=nodes.firstOrNull { it.text?.toString()==text && it.isVisibleToUser }; nodes.filter { it!==target }.forEach { it.recycle() }; if(target!=null) return target }

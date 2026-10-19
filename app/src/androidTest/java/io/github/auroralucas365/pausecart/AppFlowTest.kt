@@ -60,6 +60,7 @@ class AppFlowTest {
     private fun screenshot(name: String) {
         compose.waitForIdle()
         val instrumentation=InstrumentationRegistry.getInstrumentation()
-        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots; screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("mkdir -p /data/local/tmp/pausecart-screenshots")).use { it.readBytes() }
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("screencap -p /data/local/tmp/pausecart-screenshots/$name")).use { it.readBytes() }
     }
 }
