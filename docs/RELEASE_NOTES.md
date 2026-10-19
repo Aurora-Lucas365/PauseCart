@@ -19,7 +19,7 @@ Android 8.0+；ARM64 / ARMv7 / x86 / x86_64；不依赖 Google 服务。使用�
 
 ## 本次测试范围
 
-规则与模拟器流程结果见 [验证记录](https://github.com/Aurora-Lucas365/PauseCart/blob/main/docs/VALIDATION.md)。真实三平台与荣耀 400 新版仍需手机复测。本机窗口检查不能替代真实商家检测；下单前识别保留试用身份。
+已通过 10 项规则测试、Android 8 / 13 / 15 / 16 模拟器各 4 项流程，以及 lint 与正式签名检查。具体范围见 [验证记录](https://github.com/Aurora-Lucas365/PauseCart/blob/main/docs/VALIDATION.md)。真实三平台与荣耀 400 新版仍需手机复测。本机窗口检查不能替代真实商家检测；下单前识别保留试用身份。
 
 当前为待手机复测的预发布草稿，不作为正式稳定版。
 
