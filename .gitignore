@@ -1,0 +1,11 @@
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.jks
+*.keystore
+signing.properties
+*.hprof
+captures/
+private/

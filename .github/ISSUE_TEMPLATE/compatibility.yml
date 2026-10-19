@@ -1,0 +1,36 @@
+name: 手机 / 平台兼容反馈
+description: 报告入口提醒、结算识别或后台运行的问题（请勿上传支付信息）。
+title: "[兼容] "
+body:
+  - type: input
+    id: device
+    attributes:
+      label: 手机型号 / 系统 / Android 版本
+      placeholder: 荣耀 400 / MagicOS 10 / Android 16
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 缓购版本与购物 App 名称 / 版本
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: 使用模式
+      options: [基础清单, 入口提醒, 结算提醒（实验）, 到期通知]
+  - type: textarea
+    id: steps
+    attributes:
+      label: 操作步骤、预期与实际情况
+      description: 不要包含姓名、地址、手机号、订单号、付款码、密码或完整结算截图。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私检查
+      options:
+        - label: 我已确认没有上传个人信息或支付信息。
+          required: true

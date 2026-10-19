@@ -1,0 +1,39 @@
+name: Signed APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-apk:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build with private signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PAUSECART_KEYSTORE_BASE64 }}
+          PAUSECART_STORE_PASSWORD: ${{ secrets.PAUSECART_STORE_PASSWORD }}
+          PAUSECART_KEY_PASSWORD: ${{ secrets.PAUSECART_KEY_PASSWORD }}
+        run: |
+          set -eu
+          test -n "$KEYSTORE_BASE64"
+          export PAUSECART_KEYSTORE="$RUNNER_TEMP/pausecart-release.jks"
+          trap 'rm -f "$PAUSECART_KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$PAUSECART_KEYSTORE"
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintRelease assembleRelease --stacktrace
+          mkdir -p release-apk
+          cp app/build/outputs/apk/release/app-release.apk release-apk/PauseCart-0.1.0-beta.1.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-apk/*.apk > release-apk/SIGNATURE.txt
+          cd release-apk
+          sha256sum *.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-apk
+          path: release-apk/

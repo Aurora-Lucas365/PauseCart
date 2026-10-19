@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">缓购 PauseCart</string>
+    <string name="accessibility_description">可选功能。仅在你选择的淘宝、京东、拼多多中，按设定显示入口或实验性结算提醒。开启后系统允许服务读取界面；本应用只在所选购物 App 的实验模式提取必要文字，在本机判断，不上传、不保存完整页面、不自动点击或付款。接收 App 切换事件用于及时撤下提醒。其他页面可能受系统保护而无法识别。随时可在系统设置关闭。仅使用冷静清单无需此权限。</string>
+</resources>
